@@ -24,7 +24,7 @@ function OrderPage() {
 
   // 메뉴 목록 서버에서 불러오기
   useEffect(() => {
-    fetch('http://localhost:4000/api/menus')
+    fetch('https://order-app-8dt1.onrender.com/api/menus')
       .then(res => res.json())
       .then(data => setMenuList(data))
       .catch(() => setMenuList([]));
