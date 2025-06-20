@@ -93,7 +93,7 @@ function OrderPage() {
         quantity: item.quantity,
         options: item.options.map(opt => opt.id)
       }));
-      const res = await fetch('http://localhost:4000/api/orders', {
+      const res = await fetch('https://order-app-8dt1.onrender.com/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items, total_price: getTotal() })
