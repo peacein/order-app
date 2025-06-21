@@ -159,5 +159,5 @@ app.patch('/api/admin/menus/:id/stock', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 }); 
