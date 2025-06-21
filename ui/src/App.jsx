@@ -177,38 +177,119 @@ function OrderPage() {
 }
 
 function AdminPage() {
-  // 샘플 데이터
   const [dashboard, setDashboard] = useState({
-    totalOrders: 12,
-    pending: 3,
-    making: 2,
-    completed: 7,
+    totalOrders: 0,
+    pending: 0,
+    making: 0,
+    completed: 0,
   });
-  const [stocks, setStocks] = useState([
-    { id: 1, name: '아메리카노 (HOT)', stock: 4 },
-    { id: 2, name: '아메리카노 (ICE)', stock: 8 },
-    { id: 3, name: '카페라떼', stock: 0 },
-  ]);
-  const [orders, setOrders] = useState([
-    { id: 1, date: '2024-06-17 10:12', menu: '아메리카노 (HOT)', price: 3000, status: '주문 접수' },
-    { id: 2, date: '2024-06-17 10:15', menu: '카페라떼', price: 4000, status: '주문 접수' },
-    { id: 3, date: '2024-06-17 10:18', menu: '아메리카노 (ICE)', price: 3500, status: '제조 중' },
-  ]);
+  const [stocks, setStocks] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 데이터 로드
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 재고 현황 가져오기
+        const stockRes = await fetch('https://order-app-8dt1.onrender.com/api/admin/menus');
+        const stockData = await stockRes.json();
+        setStocks(stockData);
+
+        // 주문 현황 가져오기
+        const orderRes = await fetch('https://order-app-8dt1.onrender.com/api/admin/orders');
+        const orderData = await orderRes.json();
+        setOrders(orderData);
+
+        // 대시보드 통계 계산
+        const totalOrders = orderData.length;
+        const pending = orderData.filter(order => order.status === '주문 접수').length;
+        const making = orderData.filter(order => order.status === '제조 중').length;
+        const completed = orderData.filter(order => order.status === '제조 완료').length;
+
+        setDashboard({
+          totalOrders,
+          pending,
+          making,
+          completed,
+        });
+      } catch (error) {
+        console.error('데이터 로드 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // 재고 증감
-  const handleStockChange = (id, diff) => {
-    setStocks((prev) => prev.map(item =>
-      item.id === id ? { ...item, stock: Math.max(0, item.stock + diff) } : item
-    ));
+  const handleStockChange = async (id, diff) => {
+    try {
+      const newStock = Math.max(0, stocks.find(item => item.id === id).stock + diff);
+      const res = await fetch(`https://order-app-8dt1.onrender.com/api/admin/menus/${id}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock })
+      });
+      
+      if (res.ok) {
+        setStocks((prev) => prev.map(item =>
+          item.id === id ? { ...item, stock: newStock } : item
+        ));
+      }
+    } catch (error) {
+      console.error('재고 변경 실패:', error);
+      alert('재고 변경에 실패했습니다.');
+    }
   };
 
   // 주문 상태 변경
-  const handleOrderStatus = (id) => {
-    setOrders((prev) => prev.map(order =>
-      order.id === id && order.status === '주문 접수'
-        ? { ...order, status: '제조 중' }
-        : order
-    ));
+  const handleOrderStatus = async (id) => {
+    try {
+      const order = orders.find(o => o.id === id);
+      if (!order) return;
+
+      let newStatus;
+      if (order.status === '주문 접수') {
+        newStatus = '제조 중';
+      } else if (order.status === '제조 중') {
+        newStatus = '제조 완료';
+      } else {
+        return;
+      }
+
+      const res = await fetch(`https://order-app-8dt1.onrender.com/api/admin/orders/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        setOrders((prev) => prev.map(order =>
+          order.id === id ? { ...order, status: newStatus } : order
+        ));
+
+        // 대시보드 통계 업데이트
+        const updatedOrders = orders.map(order =>
+          order.id === id ? { ...order, status: newStatus } : order
+        );
+        const totalOrders = updatedOrders.length;
+        const pending = updatedOrders.filter(order => order.status === '주문 접수').length;
+        const making = updatedOrders.filter(order => order.status === '제조 중').length;
+        const completed = updatedOrders.filter(order => order.status === '제조 완료').length;
+
+        setDashboard({
+          totalOrders,
+          pending,
+          making,
+          completed,
+        });
+      }
+    } catch (error) {
+      console.error('주문 상태 변경 실패:', error);
+      alert('주문 상태 변경에 실패했습니다.');
+    }
   };
 
   // 재고 상태 텍스트
@@ -217,6 +298,10 @@ function AdminPage() {
     if (stock < 5) return <span className="stock-status warning">주의</span>;
     return <span className="stock-status normal">정상</span>;
   };
+
+  if (loading) {
+    return <div className="loading">데이터를 불러오는 중...</div>;
+  }
 
   return (
     <div className="admin-page">
@@ -232,16 +317,20 @@ function AdminPage() {
       <div className="stock-section">
         <h3>재고 현황</h3>
         <div className="stock-list">
-          {stocks.map((item) => (
-            <div className="stock-card" key={item.id}>
-              <div className="stock-name">{item.name}</div>
-              <div className="stock-count">{item.stock}개 {getStockStatus(item.stock)}</div>
-              <div className="stock-btns">
-                <button className="btn-stock" onClick={() => handleStockChange(item.id, -1)} disabled={item.stock === 0}>-</button>
-                <button className="btn-stock" onClick={() => handleStockChange(item.id, 1)}>+</button>
+          {stocks.length === 0 ? (
+            <div>메뉴가 없습니다.</div>
+          ) : (
+            stocks.map((item) => (
+              <div className="stock-card" key={item.id}>
+                <div className="stock-name">{item.name}</div>
+                <div className="stock-count">{item.stock}개 {getStockStatus(item.stock)}</div>
+                <div className="stock-btns">
+                  <button className="btn-stock" onClick={() => handleStockChange(item.id, -1)} disabled={item.stock === 0}>-</button>
+                  <button className="btn-stock" onClick={() => handleStockChange(item.id, 1)}>+</button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -265,14 +354,19 @@ function AdminPage() {
               <tbody>
                 {orders.map(order => (
                   <tr key={order.id}>
-                    <td>{order.date}</td>
-                    <td>{order.menu}</td>
-                    <td>{order.price.toLocaleString()}원</td>
+                    <td>{new Date(order.created_at).toLocaleString('ko-KR')}</td>
+                    <td>{order.menu_name}</td>
+                    <td>{order.total_price?.toLocaleString()}원</td>
                     <td>{order.status}</td>
                     <td>
                       {order.status === '주문 접수' && (
                         <button className="btn-primary" style={{padding: '0.3em 0.8em', fontSize: '0.95em'}} onClick={() => handleOrderStatus(order.id)}>
                           제조 시작
+                        </button>
+                      )}
+                      {order.status === '제조 중' && (
+                        <button className="btn-primary" style={{padding: '0.3em 0.8em', fontSize: '0.95em'}} onClick={() => handleOrderStatus(order.id)}>
+                          완료
                         </button>
                       )}
                     </td>
