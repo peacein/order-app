@@ -10,16 +10,23 @@ app.use(cors());
 app.use(express.json());
 
 // PostgreSQL 연결 설정 (환경변수 또는 기본값 사용)
-const pool = new Pool({
-  user: process.env.PGUSER || 'postgres',
-  host: process.env.PGHOST || 'localhost',
-  database: process.env.PGDATABASE || 'postgres',
-  password: process.env.PGPASSWORD || 'password',
-  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL ? {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : false,
+  } : {
+    user: process.env.PGUSER || 'postgres',
+    host: process.env.PGHOST || 'localhost',
+    database: process.env.PGDATABASE || 'postgres',
+    password: process.env.PGPASSWORD || 'password',
+    port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : false,
+  }
+);
 
 // 데이터베이스 연결 상태 모니터링
 pool.on('connect', () => {
@@ -99,6 +106,7 @@ app.get('/api/orders/:id', async (req, res) => {
 app.get('/api/db-health', async (req, res) => {
   try {
     console.log('DB Health Check - Environment variables:');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
     console.log('PGUSER:', process.env.PGUSER);
     console.log('PGHOST:', process.env.PGHOST);
     console.log('PGDATABASE:', process.env.PGDATABASE);
