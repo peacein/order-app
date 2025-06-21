@@ -16,6 +16,19 @@ const pool = new Pool({
   database: process.env.PGDATABASE || 'postgres',
   password: process.env.PGPASSWORD || 'password',
   port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : false,
+});
+
+// 데이터베이스 연결 상태 모니터링
+pool.on('connect', () => {
+  console.log('Database connected successfully');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
 // 1. 메뉴 목록 조회
@@ -85,10 +98,22 @@ app.get('/api/orders/:id', async (req, res) => {
 // DB 연결 테스트 라우트
 app.get('/api/db-health', async (req, res) => {
   try {
+    console.log('DB Health Check - Environment variables:');
+    console.log('PGUSER:', process.env.PGUSER);
+    console.log('PGHOST:', process.env.PGHOST);
+    console.log('PGDATABASE:', process.env.PGDATABASE);
+    console.log('PGPORT:', process.env.PGPORT);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    
     const result = await pool.query('SELECT NOW()');
     res.json({ status: 'ok', time: result.rows[0].now });
   } catch (err) {
-    res.status(500).json({ status: 'error', error: err.message });
+    console.error('DB Health Check Error:', err);
+    res.status(500).json({ 
+      status: 'error', 
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
