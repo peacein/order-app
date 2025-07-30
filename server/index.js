@@ -204,8 +204,19 @@ app.get('/api/admin/orders', async (req, res) => {
           };
         }
         
-        const items = JSON.parse(order.items);
-        console.log('주문 ID:', order.id, '파싱된 items:', items);
+        // JSON 파싱 시도
+        let items;
+        try {
+          items = JSON.parse(order.items);
+          console.log('주문 ID:', order.id, '파싱된 items:', items);
+        } catch (parseError) {
+          console.error('JSON 파싱 실패 (주문 ID:', order.id, '):', parseError);
+          console.error('문제가 된 items 데이터:', order.items);
+          return {
+            ...order,
+            menu_names: 'JSON 파싱 오류'
+          };
+        }
         
         // items가 배열이 아닌 경우 처리
         if (!Array.isArray(items)) {
