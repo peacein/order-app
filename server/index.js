@@ -207,10 +207,45 @@ app.get('/api/admin/orders', async (req, res) => {
     const processedOrders = result.rows.map(order => {
       try {
         console.log('주문 ID:', order.id, 'items:', order.items);
+        
+        // items가 null이거나 빈 문자열인 경우 처리
+        if (!order.items || order.items === 'null' || order.items === '') {
+          console.log('주문 ID:', order.id, 'items가 비어있음');
+          return {
+            ...order,
+            menu_names: '주문 정보 없음'
+          };
+        }
+        
         const items = JSON.parse(order.items);
+        console.log('주문 ID:', order.id, '파싱된 items:', items);
+        
+        // items가 배열이 아닌 경우 처리
+        if (!Array.isArray(items)) {
+          console.log('주문 ID:', order.id, 'items가 배열이 아님:', typeof items);
+          return {
+            ...order,
+            menu_names: '주문 형식 오류'
+          };
+        }
+        
         const menuNames = items.map(item => {
-          const menuName = menuMap[item.menu_id] || `메뉴 ID ${item.menu_id}`;
-          return `${menuName} x${item.quantity}`;
+          console.log('주문 ID:', order.id, 'item:', item);
+          
+          // item이 올바른 형식인지 확인
+          if (!item || typeof item !== 'object') {
+            return '잘못된 주문 항목';
+          }
+          
+          const menuId = item.menu_id;
+          const quantity = item.quantity;
+          
+          if (!menuId || !quantity) {
+            return '주문 정보 불완전';
+          }
+          
+          const menuName = menuMap[menuId] || `메뉴 ID ${menuId}`;
+          return `${menuName} x${quantity}`;
         });
         
         return {
@@ -219,6 +254,7 @@ app.get('/api/admin/orders', async (req, res) => {
         };
       } catch (parseError) {
         console.error('JSON 파싱 오류 (주문 ID:', order.id, '):', parseError);
+        console.error('문제가 된 items 데이터:', order.items);
         return {
           ...order,
           menu_names: '주문 정보 오류'
