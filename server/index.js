@@ -189,7 +189,20 @@ app.get('/api/admin/orders', async (req, res) => {
     const result = await pool.query('SELECT id, items, total_price, created_at, status FROM Orders ORDER BY created_at DESC');
     console.log('주문 데이터 조회 성공, 레코드 수:', result.rows.length);
     
-    // 주문 데이터 처리 (메뉴 정보 없이)
+    // 메뉴 정보를 한 번에 가져오기
+    let menuMap = new Map();
+    try {
+      const menuResult = await pool.query('SELECT id, name FROM Menus');
+      menuResult.rows.forEach(menu => {
+        menuMap.set(menu.id, menu.name);
+      });
+      console.log('메뉴 정보 로드 완료:', menuMap);
+    } catch (menuErr) {
+      console.error('메뉴 정보 로드 실패:', menuErr);
+      // 메뉴 정보 로드 실패해도 주문 처리는 계속 진행
+    }
+    
+    // 주문 데이터 처리
     console.log('주문 데이터 처리 중...');
     const processedOrders = result.rows.map(order => {
       try {
@@ -237,13 +250,19 @@ app.get('/api/admin/orders', async (req, res) => {
           
           const menuId = item.menu_id;
           const quantity = item.quantity;
+          const options = item.options || [];
           
           if (!menuId || !quantity) {
             return '주문 정보 불완전';
           }
           
-          // 메뉴 이름 대신 ID 사용 (데이터베이스 연결 문제 우회)
-          return `메뉴 ID ${menuId} x${quantity}`;
+          // 메뉴 이름 가져오기
+          const menuName = menuMap.get(menuId) || `메뉴 ID ${menuId}`;
+          
+          // 옵션이 있는 경우 표시
+          const optionsText = options.length > 0 ? ` (옵션: ${options.join(', ')})` : '';
+          
+          return `${menuName} x${quantity}${optionsText}`;
         });
         
         return {
