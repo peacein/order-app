@@ -6,8 +6,8 @@ SELECT '=== 문제가 되는 데이터 확인 ===' as info;
 SELECT 
   id,
   items,
-  LENGTH(items) as items_length,
-  LEFT(items, 50) as items_preview
+  LENGTH(items::text) as items_length,
+  LEFT(items::text, 50) as items_preview
 FROM Orders 
 WHERE items IS NOT NULL
 ORDER BY created_at DESC;
