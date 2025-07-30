@@ -189,20 +189,7 @@ app.get('/api/admin/orders', async (req, res) => {
     const result = await pool.query('SELECT id, items, total_price, created_at, status FROM Orders ORDER BY created_at DESC');
     console.log('주문 데이터 조회 성공, 레코드 수:', result.rows.length);
     
-    // 메뉴 정보 조회
-    let menuMap = {};
-    try {
-      console.log('메뉴 정보 조회 중...');
-      const menuQuery = await pool.query('SELECT id, name FROM Menus');
-      console.log('메뉴 데이터 조회 성공, 레코드 수:', menuQuery.rows.length);
-      menuQuery.rows.forEach(menu => {
-        menuMap[menu.id] = menu.name;
-      });
-    } catch (menuError) {
-      console.error('메뉴 정보 조회 오류:', menuError);
-    }
-    
-    // 주문 데이터에 메뉴 정보 추가
+    // 주문 데이터 처리 (메뉴 정보 없이)
     console.log('주문 데이터 처리 중...');
     const processedOrders = result.rows.map(order => {
       try {
@@ -244,8 +231,8 @@ app.get('/api/admin/orders', async (req, res) => {
             return '주문 정보 불완전';
           }
           
-          const menuName = menuMap[menuId] || `메뉴 ID ${menuId}`;
-          return `${menuName} x${quantity}`;
+          // 메뉴 이름 대신 ID 사용 (데이터베이스 연결 문제 우회)
+          return `메뉴 ID ${menuId} x${quantity}`;
         });
         
         return {
