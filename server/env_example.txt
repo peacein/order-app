@@ -1,0 +1,15 @@
+# Render PostgreSQL 데이터베이스 연결 설정
+# 실제 값으로 교체하여 .env 파일로 저장하세요
+
+# Render에서 제공하는 DATABASE_URL (권장)
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# 또는 개별 환경 변수로 설정
+PGUSER=your_username
+PGHOST=your_host
+PGDATABASE=your_database
+PGPASSWORD=your_password
+PGPORT=5432
+
+# 환경 설정
+NODE_ENV=production 

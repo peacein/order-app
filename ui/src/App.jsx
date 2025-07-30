@@ -25,9 +25,25 @@ function OrderPage() {
   // 메뉴 목록 서버에서 불러오기
   useEffect(() => {
     fetch('https://order-app-8dt1.onrender.com/api/menus')
-      .then(res => res.json())
-      .then(data => setMenuList(data))
-      .catch(() => setMenuList([]));
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        // 데이터가 배열인지 확인
+        if (Array.isArray(data)) {
+          setMenuList(data);
+        } else {
+          console.error('API 응답이 배열이 아닙니다:', data);
+          setMenuList([]);
+        }
+      })
+      .catch((error) => {
+        console.error('메뉴 로드 실패:', error);
+        setMenuList([]);
+      });
   }, []);
 
   // 옵션 체크박스 변경 핸들러
@@ -110,14 +126,23 @@ function OrderPage() {
 
   return (
     <div>
-      <div className="menu-list">
-        {menuList.map((menu) => (
+      {menuList.length === 0 ? (
+        <div className="error-message">
+          <h3>메뉴를 불러올 수 없습니다</h3>
+          <p>서버 연결을 확인해주세요.</p>
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            다시 시도
+          </button>
+        </div>
+      ) : (
+        <div className="menu-list">
+          {menuList.map((menu) => (
           <div className="menu-card" key={menu.id}>
             <img src={menu.image_url} alt={menu.name} className="menu-img" />
             <div className="menu-title">{menu.name}</div>
             <div className="menu-price">{menu.price?.toLocaleString()}원</div>
             <div className="menu-options">
-              {menu.options?.map((opt, idx) => (
+              {Array.isArray(menu.options) && menu.options.map((opt, idx) => (
                 <label key={opt.id} className="option-label">
                   <input
                     type="checkbox"
@@ -133,7 +158,8 @@ function OrderPage() {
             </button>
           </div>
         ))}
-      </div>
+        </div>
+      )}
       <div className="cart-section">
         <div className="cart-list">
           <h3>장바구니</h3>
@@ -193,13 +219,19 @@ function AdminPage() {
       try {
         // 재고 현황 가져오기
         const stockRes = await fetch('https://order-app-8dt1.onrender.com/api/admin/menus');
+        if (!stockRes.ok) {
+          throw new Error(`재고 API 오류: ${stockRes.status}`);
+        }
         const stockData = await stockRes.json();
-        setStocks(stockData);
+        setStocks(Array.isArray(stockData) ? stockData : []);
 
         // 주문 현황 가져오기
         const orderRes = await fetch('https://order-app-8dt1.onrender.com/api/admin/orders');
+        if (!orderRes.ok) {
+          throw new Error(`주문 API 오류: ${orderRes.status}`);
+        }
         const orderData = await orderRes.json();
-        setOrders(orderData);
+        setOrders(Array.isArray(orderData) ? orderData : []);
 
         // 대시보드 통계 계산
         const totalOrders = orderData.length;
