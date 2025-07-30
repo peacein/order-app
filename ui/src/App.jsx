@@ -217,6 +217,16 @@ function AdminPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // 테스트 API 호출
+        console.log('테스트 API 호출 중...');
+        const testRes = await fetch('https://order-app-8dt1.onrender.com/api/test-orders');
+        if (testRes.ok) {
+          const testData = await testRes.json();
+          console.log('테스트 API 결과:', testData);
+        } else {
+          console.error('테스트 API 오류:', testRes.status);
+        }
+
         // 재고 현황 가져오기
         const stockRes = await fetch('https://order-app-8dt1.onrender.com/api/admin/menus');
         if (!stockRes.ok) {
@@ -231,6 +241,7 @@ function AdminPage() {
           throw new Error(`주문 API 오류: ${orderRes.status}`);
         }
         const orderData = await orderRes.json();
+        console.log('주문 데이터:', orderData); // 디버깅용
         setOrders(Array.isArray(orderData) ? orderData : []);
 
         // 대시보드 통계 계산
