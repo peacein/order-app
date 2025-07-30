@@ -191,14 +191,22 @@ app.get('/api/admin/orders', async (req, res) => {
     
     // 메뉴 정보를 한 번에 가져오기
     let menuMap = new Map();
+    let optionMap = new Map();
     try {
       const menuResult = await pool.query('SELECT id, name FROM Menus');
       menuResult.rows.forEach(menu => {
         menuMap.set(menu.id, menu.name);
       });
       console.log('메뉴 정보 로드 완료:', menuMap);
+      
+      // 옵션 정보도 한 번에 가져오기
+      const optionResult = await pool.query('SELECT id, name FROM Options');
+      optionResult.rows.forEach(option => {
+        optionMap.set(option.id, option.name);
+      });
+      console.log('옵션 정보 로드 완료:', optionMap);
     } catch (menuErr) {
-      console.error('메뉴 정보 로드 실패:', menuErr);
+      console.error('메뉴/옵션 정보 로드 실패:', menuErr);
       // 메뉴 정보 로드 실패해도 주문 처리는 계속 진행
     }
     
@@ -268,8 +276,13 @@ app.get('/api/admin/orders', async (req, res) => {
           // 메뉴 이름 가져오기
           const menuName = menuMap.get(menuId) || `메뉴 ID ${menuId}`;
           
+          // 옵션 이름으로 변환
+          const optionNames = options.map(optionId => {
+            return optionMap.get(optionId) || `옵션 ID ${optionId}`;
+          });
+          
           // 옵션이 있는 경우 표시
-          const optionsText = options.length > 0 ? ` (옵션: ${options.join(', ')})` : '';
+          const optionsText = optionNames.length > 0 ? ` (옵션: ${optionNames.join(', ')})` : '';
           
           return `${menuName} x${quantity}${optionsText}`;
         });
