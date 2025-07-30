@@ -228,14 +228,23 @@ app.get('/api/admin/orders', async (req, res) => {
         // JSON 파싱 시도
         let items;
         try {
-          // items가 이미 JSONB 객체인 경우
-          if (typeof order.items === 'object' && order.items !== null) {
+          console.log('주문 ID:', order.id, 'items 원본:', order.items);
+          console.log('주문 ID:', order.id, 'items 타입:', typeof order.items);
+          
+          // PostgreSQL JSONB는 이미 객체로 변환됨
+          if (order.items && typeof order.items === 'object') {
             items = order.items;
             console.log('주문 ID:', order.id, 'items가 이미 객체임:', items);
-          } else {
-            // 문자열인 경우 파싱
+          } else if (order.items && typeof order.items === 'string') {
+            // 문자열인 경우에만 파싱
             items = JSON.parse(order.items);
-            console.log('주문 ID:', order.id, '파싱된 items:', items);
+            console.log('주문 ID:', order.id, '문자열에서 파싱된 items:', items);
+          } else {
+            console.error('주문 ID:', order.id, 'items가 null이거나 예상치 못한 타입:', order.items);
+            return {
+              ...order,
+              menu_names: '주문 데이터 없음'
+            };
           }
         } catch (parseError) {
           console.error('JSON 파싱 실패 (주문 ID:', order.id, '):', parseError);
