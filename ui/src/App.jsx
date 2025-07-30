@@ -237,7 +237,7 @@ function AdminPage() {
         const totalOrders = orderData.length;
         const pending = orderData.filter(order => order.status === '주문 접수').length;
         const making = orderData.filter(order => order.status === '제조 중').length;
-        const completed = orderData.filter(order => order.status === '제조 완료').length;
+        const completed = orderData.filter(order => order.status === '완료').length;
 
         setDashboard({
           totalOrders,
@@ -286,7 +286,7 @@ function AdminPage() {
       if (order.status === '주문 접수') {
         newStatus = '제조 중';
       } else if (order.status === '제조 중') {
-        newStatus = '제조 완료';
+        newStatus = '완료';
       } else {
         return;
       }
@@ -309,7 +309,7 @@ function AdminPage() {
         const totalOrders = updatedOrders.length;
         const pending = updatedOrders.filter(order => order.status === '주문 접수').length;
         const making = updatedOrders.filter(order => order.status === '제조 중').length;
-        const completed = updatedOrders.filter(order => order.status === '제조 완료').length;
+        const completed = updatedOrders.filter(order => order.status === '완료').length;
 
         setDashboard({
           totalOrders,
@@ -387,7 +387,7 @@ function AdminPage() {
                 {orders.map(order => (
                   <tr key={order.id}>
                     <td>{new Date(order.created_at).toLocaleString('ko-KR')}</td>
-                    <td>{order.menu_name}</td>
+                    <td>{order.menu_names || '메뉴 정보 없음'}</td>
                     <td>{order.total_price?.toLocaleString()}원</td>
                     <td>{order.status}</td>
                     <td>
@@ -398,6 +398,11 @@ function AdminPage() {
                       )}
                       {order.status === '제조 중' && (
                         <button className="btn-primary" style={{padding: '0.3em 0.8em', fontSize: '0.95em'}} onClick={() => handleOrderStatus(order.id)}>
+                          제조 완료
+                        </button>
+                      )}
+                      {order.status === '완료' && (
+                        <button className="btn-primary" style={{padding: '0.3em 0.8em', fontSize: '0.95em'}} disabled>
                           완료
                         </button>
                       )}

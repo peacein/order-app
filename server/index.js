@@ -143,7 +143,36 @@ app.get('/api/admin/menus', async (req, res) => {
 app.get('/api/admin/orders', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, items, total_price, created_at, status FROM Orders ORDER BY created_at DESC');
-    res.json(result.rows);
+    
+    // 주문 데이터에 메뉴 정보 추가 (성능 최적화)
+    const menuIds = new Set();
+    result.rows.forEach(order => {
+      const items = JSON.parse(order.items);
+      items.forEach(item => menuIds.add(item.menu_id));
+    });
+    
+    // 모든 메뉴 정보를 한 번에 조회
+    const menuQuery = await pool.query('SELECT id, name FROM Menus WHERE id = ANY($1)', [Array.from(menuIds)]);
+    const menuMap = {};
+    menuQuery.rows.forEach(menu => {
+      menuMap[menu.id] = menu.name;
+    });
+    
+    // 주문 데이터에 메뉴 정보 추가
+    const processedOrders = result.rows.map(order => {
+      const items = JSON.parse(order.items);
+      const menuNames = items.map(item => {
+        const menuName = menuMap[item.menu_id] || `메뉴 ID ${item.menu_id}`;
+        return `${menuName} x${item.quantity}`;
+      });
+      
+      return {
+        ...order,
+        menu_names: menuNames.join(', ')
+      };
+    });
+    
+    res.json(processedOrders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

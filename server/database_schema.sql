@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS Orders (
     id SERIAL PRIMARY KEY,
     items JSONB NOT NULL,
     total_price INTEGER NOT NULL,
-    status VARCHAR(20) DEFAULT '대기 중',
+    status VARCHAR(20) DEFAULT '주문 접수',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -100,6 +100,15 @@
   background: #1d4ed8;
 }
 
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled:hover {
+  background: #9ca3af;
+}
+
 main {
   max-width: 900px;
   margin: 0 auto;
