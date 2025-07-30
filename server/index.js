@@ -220,11 +220,20 @@ app.get('/api/admin/orders', async (req, res) => {
         // JSON 파싱 시도
         let items;
         try {
-          items = JSON.parse(order.items);
-          console.log('주문 ID:', order.id, '파싱된 items:', items);
+          // items가 이미 JSONB 객체인 경우
+          if (typeof order.items === 'object' && order.items !== null) {
+            items = order.items;
+            console.log('주문 ID:', order.id, 'items가 이미 객체임:', items);
+          } else {
+            // 문자열인 경우 파싱
+            items = JSON.parse(order.items);
+            console.log('주문 ID:', order.id, '파싱된 items:', items);
+          }
         } catch (parseError) {
           console.error('JSON 파싱 실패 (주문 ID:', order.id, '):', parseError);
           console.error('문제가 된 items 데이터:', order.items);
+          console.error('items 타입:', typeof order.items);
+          console.error('items 길이:', order.items ? order.items.length : 'N/A');
           return {
             ...order,
             menu_names: 'JSON 파싱 오류'
