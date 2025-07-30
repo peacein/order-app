@@ -417,3 +417,22 @@ body {
   color: #856404;
   margin-bottom: 1rem;
 }
+
+/* 메뉴 옵션 스타일 */
+.menu-with-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.menu-main {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.menu-options {
+  font-size: 0.85em;
+  color: #6b7280;
+  font-weight: 400;
+  line-height: 1.3;
+}

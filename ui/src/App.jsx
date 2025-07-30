@@ -398,7 +398,29 @@ function AdminPage() {
                 {orders.map(order => (
                   <tr key={order.id}>
                     <td>{new Date(order.created_at).toLocaleString('ko-KR')}</td>
-                    <td>{order.menu_names || '메뉴 정보 없음'}</td>
+                    <td>
+                      {(() => {
+                        const menuNames = order.menu_names || '메뉴 정보 없음';
+                        if (typeof menuNames === 'string' && menuNames.includes('(옵션:')) {
+                          // 옵션이 있는 경우 파싱하여 줄바꿈으로 표시
+                          const parts = menuNames.split('(옵션:');
+                          const mainMenu = parts[0].trim();
+                          const options = parts[1] ? parts[1].replace(')', '').trim() : '';
+                          
+                          return (
+                            <div className="menu-with-options">
+                              <div className="menu-main">{mainMenu}</div>
+                              {options && (
+                                <div className="menu-options">{options}</div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          // 옵션이 없는 경우 일반 표시
+                          return <div className="menu-main">{menuNames}</div>;
+                        }
+                      })()}
+                    </td>
                     <td>{order.total_price?.toLocaleString()}원</td>
                     <td>{order.status}</td>
                     <td>
