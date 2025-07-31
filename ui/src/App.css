@@ -441,6 +441,7 @@ body {
 /* 주문 테이블 메뉴 칼럼 전체 글씨 크기 조정 */
 .order-table td:nth-child(2) {
   font-size: 1em;
+  text-align: left;
 }
 
 /* 여러 메뉴 아이템 컨테이너 */
