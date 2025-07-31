@@ -442,3 +442,15 @@ body {
 .order-table td:nth-child(2) {
   font-size: 1em;
 }
+
+/* 여러 메뉴 아이템 컨테이너 */
+.menu-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+/* 개별 메뉴 아이템 */
+.menu-item {
+  padding: 0.2em 0;
+}

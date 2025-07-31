@@ -400,24 +400,44 @@ function AdminPage() {
                     <td>{new Date(order.created_at).toLocaleString('ko-KR')}</td>
                     <td>
                       {(() => {
-                        const menuNames = order.menu_names || '메뉴 정보 없음';
-                        if (typeof menuNames === 'string' && menuNames.includes('(옵션:')) {
-                          // 옵션이 있는 경우 파싱하여 줄바꿈으로 표시
-                          const parts = menuNames.split('(옵션:');
-                          const mainMenu = parts[0].trim();
-                          const options = parts[1] ? parts[1].replace(')', '').trim() : '';
-                          
+                        if (order.menu_items && Array.isArray(order.menu_items)) {
                           return (
-                            <div className="menu-with-options">
-                              <div className="menu-main">{mainMenu}</div>
-                              {options && (
-                                <div className="menu-options">{options}</div>
-                              )}
+                            <div className="menu-items-container">
+                              {order.menu_items.map((item, index) => (
+                                <div key={index} className="menu-item">
+                                  {item.has_options ? (
+                                    <div className="menu-with-options">
+                                      <div className="menu-main">{item.menu_name}</div>
+                                      <div className="menu-options">{item.options.join(', ')}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="menu-main">{item.menu_name}</div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           );
+                        } else if (order.menu_names) {
+                          // 기존 menu_names 형식 지원 (하위 호환성)
+                          const menuNames = order.menu_names;
+                          if (typeof menuNames === 'string' && menuNames.includes('(옵션:')) {
+                            const parts = menuNames.split('(옵션:');
+                            const mainMenu = parts[0].trim();
+                            const options = parts[1] ? parts[1].replace(')', '').trim() : '';
+                            
+                            return (
+                              <div className="menu-with-options">
+                                <div className="menu-main">{mainMenu}</div>
+                                {options && (
+                                  <div className="menu-options">{options}</div>
+                                )}
+                              </div>
+                            );
+                          } else {
+                            return <div className="menu-main">{menuNames}</div>;
+                          }
                         } else {
-                          // 옵션이 없는 경우 일반 표시
-                          return <div className="menu-main">{menuNames}</div>;
+                          return <div className="menu-main">메뉴 정보 없음</div>;
                         }
                       })()}
                     </td>

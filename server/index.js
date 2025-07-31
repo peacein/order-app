@@ -174,9 +174,9 @@ app.get('/api/admin/orders', async (req, res) => {
           };
         }
         
-        const menuNames = items.map(item => {
+        const menuItems = items.map(item => {
           if (!item || typeof item !== 'object') {
-            return '잘못된 주문 항목';
+            return { menu_name: '잘못된 주문 항목', has_options: false };
           }
           
           const menuId = item.menu_id;
@@ -184,7 +184,7 @@ app.get('/api/admin/orders', async (req, res) => {
           const options = item.options || [];
           
           if (!menuId || !quantity) {
-            return '주문 정보 불완전';
+            return { menu_name: '주문 정보 불완전', has_options: false };
           }
           
           const menuName = menuMap.get(menuId) || `메뉴 ID ${menuId}`;
@@ -192,13 +192,16 @@ app.get('/api/admin/orders', async (req, res) => {
             return optionMap.get(optionId) || `옵션 ID ${optionId}`;
           });
           
-          const optionsText = optionNames.length > 0 ? ` (옵션: ${optionNames.join(', ')})` : '';
-          return `${menuName} x${quantity}${optionsText}`;
+          return {
+            menu_name: `${menuName} x${quantity}`,
+            options: optionNames,
+            has_options: optionNames.length > 0
+          };
         });
         
         return {
           ...order,
-          menu_names: menuNames.join(', ')
+          menu_items: menuItems
         };
       } catch (parseError) {
         return {
