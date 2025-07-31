@@ -9,7 +9,7 @@ const PORT = process.env.PGPORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// PostgreSQL 연결 설정 (환경변수 또는 기본값 사용)
+// PostgreSQL 연결 설정
 const pool = new Pool(
   process.env.DATABASE_URL ? {
     connectionString: process.env.DATABASE_URL,
@@ -43,7 +43,7 @@ app.get('/api/menus', async (req, res) => {
   try {
     const menus = await pool.query('SELECT * FROM Menus ORDER BY id');
     const options = await pool.query('SELECT * FROM Options ORDER BY menu_id, id');
-    // 메뉴별 옵션 매핑
+    
     const menuList = menus.rows.map(menu => ({
       ...menu,
       options: options.rows.filter(opt => opt.menu_id === menu.id)
@@ -60,9 +60,11 @@ app.post('/api/orders', async (req, res) => {
   if (!Array.isArray(items) || typeof total_price !== 'number') {
     return res.status(400).json({ error: 'Invalid order data' });
   }
+  
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
     // 재고 차감
     for (const item of items) {
       const menuId = item.menu_id;
@@ -73,6 +75,7 @@ app.post('/api/orders', async (req, res) => {
       }
       await client.query('UPDATE Menus SET stock = stock - $1 WHERE id = $2', [quantity, menuId]);
     }
+    
     // 주문 저장
     const insertRes = await client.query(
       'INSERT INTO Orders (items, total_price, created_at) VALUES ($1, $2, NOW()) RETURNING *',
@@ -105,64 +108,12 @@ app.get('/api/orders/:id', async (req, res) => {
 // DB 연결 테스트 라우트
 app.get('/api/db-health', async (req, res) => {
   try {
-    console.log('DB Health Check - Environment variables:');
-    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-    console.log('PGUSER:', process.env.PGUSER);
-    console.log('PGHOST:', process.env.PGHOST);
-    console.log('PGDATABASE:', process.env.PGDATABASE);
-    console.log('PGPORT:', process.env.PGPORT);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    
     const result = await pool.query('SELECT NOW()');
     res.json({ status: 'ok', time: result.rows[0].now });
   } catch (err) {
-    console.error('DB Health Check Error:', err);
     res.status(500).json({ 
       status: 'error', 
-      error: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-  }
-});
-
-// 간단한 주문 테스트 API
-app.get('/api/test-orders', async (req, res) => {
-  try {
-    console.log('테스트 주문 API 호출됨');
-    
-    // 1. 데이터베이스 연결 테스트
-    const dbTest = await pool.query('SELECT NOW()');
-    console.log('DB 연결 성공:', dbTest.rows[0]);
-    
-    // 2. Orders 테이블 존재 확인
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'orders'
-      );
-    `);
-    console.log('Orders 테이블 존재:', tableCheck.rows[0].exists);
-    
-    // 3. Orders 테이블 데이터 확인
-    const ordersCheck = await pool.query('SELECT COUNT(*) as count FROM Orders');
-    console.log('Orders 레코드 수:', ordersCheck.rows[0].count);
-    
-    // 4. Menus 테이블 데이터 확인
-    const menusCheck = await pool.query('SELECT COUNT(*) as count FROM Menus');
-    console.log('Menus 레코드 수:', menusCheck.rows[0].count);
-    
-    res.json({
-      db_connected: true,
-      orders_table_exists: tableCheck.rows[0].exists,
-      orders_count: ordersCheck.rows[0].count,
-      menus_count: menusCheck.rows[0].count
-    });
-  } catch (err) {
-    console.error('테스트 API 오류:', err);
-    res.status(500).json({ 
-      error: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      error: err.message
     });
   }
 });
@@ -183,83 +134,40 @@ app.get('/api/admin/menus', async (req, res) => {
 
 // 2. 관리자 - 주문 현황
 app.get('/api/admin/orders', async (req, res) => {
-  console.log('주문 현황 API 호출됨');
   try {
-    console.log('데이터베이스 연결 확인 중...');
     const result = await pool.query('SELECT id, items, total_price, created_at, status FROM Orders ORDER BY created_at DESC');
-    console.log('주문 데이터 조회 성공, 레코드 수:', result.rows.length);
     
-    // 메뉴 정보를 한 번에 가져오기
-    let menuMap = new Map();
-    let optionMap = new Map();
-    try {
-      const menuResult = await pool.query('SELECT id, name FROM Menus');
-      menuResult.rows.forEach(menu => {
-        menuMap.set(menu.id, menu.name);
-      });
-      console.log('메뉴 정보 로드 완료:', menuMap);
-      
-      // 옵션 정보도 한 번에 가져오기
-      const optionResult = await pool.query('SELECT id, name FROM Options');
-      optionResult.rows.forEach(option => {
-        optionMap.set(option.id, option.name);
-      });
-      console.log('옵션 정보 로드 완료:', optionMap);
-    } catch (menuErr) {
-      console.error('메뉴/옵션 정보 로드 실패:', menuErr);
-      // 메뉴 정보 로드 실패해도 주문 처리는 계속 진행
-    }
+    // 메뉴와 옵션 정보를 한 번에 가져오기
+    const menuResult = await pool.query('SELECT id, name FROM Menus');
+    const optionResult = await pool.query('SELECT id, name FROM Options');
+    
+    const menuMap = new Map(menuResult.rows.map(menu => [menu.id, menu.name]));
+    const optionMap = new Map(optionResult.rows.map(option => [option.id, option.name]));
     
     // 주문 데이터 처리
-    console.log('주문 데이터 처리 중...');
     const processedOrders = result.rows.map(order => {
       try {
-        console.log('주문 ID:', order.id, 'items:', order.items);
-        
-        // items가 null이거나 빈 문자열인 경우 처리
         if (!order.items || order.items === 'null' || order.items === '') {
-          console.log('주문 ID:', order.id, 'items가 비어있음');
           return {
             ...order,
             menu_names: '주문 정보 없음'
           };
         }
         
-        // JSON 파싱 시도
+        // JSON 파싱
         let items;
-        try {
-          console.log('주문 ID:', order.id, 'items 원본:', order.items);
-          console.log('주문 ID:', order.id, 'items 타입:', typeof order.items);
-          
-          // PostgreSQL JSONB는 이미 객체로 변환됨
-          if (order.items && typeof order.items === 'object') {
-            items = order.items;
-            console.log('주문 ID:', order.id, 'items가 이미 객체임:', items);
-          } else if (order.items && typeof order.items === 'string') {
-            // 문자열인 경우에만 파싱
-            items = JSON.parse(order.items);
-            console.log('주문 ID:', order.id, '문자열에서 파싱된 items:', items);
-          } else {
-            console.error('주문 ID:', order.id, 'items가 null이거나 예상치 못한 타입:', order.items);
-            return {
-              ...order,
-              menu_names: '주문 데이터 없음'
-            };
-          }
-        } catch (parseError) {
-          console.error('JSON 파싱 실패 (주문 ID:', order.id, '):', parseError);
-          console.error('문제가 된 items 데이터:', order.items);
-          console.error('items 타입:', typeof order.items);
-          console.error('items 길이:', order.items ? order.items.length : 'N/A');
+        if (order.items && typeof order.items === 'object') {
+          items = order.items;
+        } else if (order.items && typeof order.items === 'string') {
+          items = JSON.parse(order.items);
+        } else {
           return {
             ...order,
-            menu_names: 'JSON 파싱 오류'
+            menu_names: '주문 데이터 없음'
           };
         }
         
-        // items가 배열이 아닌 경우 처리
         if (!Array.isArray(items)) {
-          console.log('주문 ID:', order.id, 'items가 배열이 아님:', typeof items);
           return {
             ...order,
             menu_names: '주문 형식 오류'
@@ -267,9 +175,6 @@ app.get('/api/admin/orders', async (req, res) => {
         }
         
         const menuNames = items.map(item => {
-          console.log('주문 ID:', order.id, 'item:', item);
-          
-          // item이 올바른 형식인지 확인
           if (!item || typeof item !== 'object') {
             return '잘못된 주문 항목';
           }
@@ -282,17 +187,12 @@ app.get('/api/admin/orders', async (req, res) => {
             return '주문 정보 불완전';
           }
           
-          // 메뉴 이름 가져오기
           const menuName = menuMap.get(menuId) || `메뉴 ID ${menuId}`;
-          
-          // 옵션 이름으로 변환
           const optionNames = options.map(optionId => {
             return optionMap.get(optionId) || `옵션 ID ${optionId}`;
           });
           
-          // 옵션이 있는 경우 표시
           const optionsText = optionNames.length > 0 ? ` (옵션: ${optionNames.join(', ')})` : '';
-          
           return `${menuName} x${quantity}${optionsText}`;
         });
         
@@ -301,8 +201,6 @@ app.get('/api/admin/orders', async (req, res) => {
           menu_names: menuNames.join(', ')
         };
       } catch (parseError) {
-        console.error('JSON 파싱 오류 (주문 ID:', order.id, '):', parseError);
-        console.error('문제가 된 items 데이터:', order.items);
         return {
           ...order,
           menu_names: '주문 정보 오류'
@@ -310,15 +208,13 @@ app.get('/api/admin/orders', async (req, res) => {
       }
     });
     
-    console.log('처리된 주문 데이터:', processedOrders);
     res.json(processedOrders);
   } catch (err) {
-    console.error('주문 현황 조회 오류:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. 관리자 - 주문 상태 변경 (제조 중/완료)
+// 3. 관리자 - 주문 상태 변경
 app.patch('/api/admin/orders/:id/status', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
